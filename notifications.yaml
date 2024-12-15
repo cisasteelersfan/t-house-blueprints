@@ -1,6 +1,6 @@
 mode: restart
 blueprint:
-  name: 🔔 Notifications (Version 2.0.3 Beta)
+  name: 🔔 Notifications (Version 2.0.5 Beta)
   source_url: https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml
   homeassistant:
     min_version: 2024.06.0
@@ -9,7 +9,7 @@ blueprint:
   description: >-
     <div>
       <h2>🔔 Notifications</h2>
-      <b>Version 2.0.3 Beta</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
+      <b>Version 2.0.5 Beta</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
       </div>
       <br>
 
@@ -41,6 +41,9 @@ blueprint:
 
       <details>
       <summary>Expand/collapse changelog</summary>
+
+      ### Version 2.0.4
+      - suppport notifications to multiples devices
 
       ### Version 2.0.3
       - collapse menus ability on main blueprint creation page, maybe more readable
@@ -123,11 +126,10 @@ blueprint:
       name: "📲 Device to notify"
       description: >-
         Device needs to run the official [Home Assistant Companion](https://companion.home-assistant.io/) app to receive notifications.<br><br>
-        ❔ Only used with `📲 Notification Strategy: Device`<br>
-        👍🏻 `Device` is the preferred and default option.
-      default: ""
+      default: []
       selector:
         device:
+          multiple: true
           filter:
             - integration: mobile_app
 
@@ -806,6 +808,7 @@ fields:
     default: !input notify_device
     selector:
       device:
+        multiple: true
         filter:
           - integration: mobile_app
   field_title:
@@ -942,7 +945,7 @@ fields:
 
 sequence:
   ##############################
-  # Setup Variables
+  # Setup commons Variables
   ##############################
   - alias: Basic Notification Content
     variables:
@@ -1036,8 +1039,6 @@ sequence:
     variables:
       script_notify_device: !input notify_device
       notify_device: "{{ iif(field_notify_device is defined, field_notify_device, script_notify_device) }}"
-      notify_service: >-
-        {{ "notify.mobile_app_{id}".format(id=device_attr(notify_device,'name')|slugify) }}
 
   - alias: Option 1
     variables:
@@ -1151,53 +1152,61 @@ sequence:
           "{}".format('uri' if option_three_uri|length else ''): option_three_uri,
         }}}
 
-  - alias: Setup Payload
+  - alias: Expect response
     variables:
-      options: >-
-        {{ [option_one, option_two, option_three] | selectattr('enabled') | list }}
       expect_response: "{{ enable_timeout or option_one_enabled or option_two_enabled or option_three_enabled }}" # If there's no timeout nor options, then no point waiting. Stop script.
-      # Build OS specific notification payloads.
-      notification_data: >-
-        {% set apple_device = 'APPLE' in (device_attr(notify_device, "manufacturer")|upper) %}
-        {% set payload = namespace(data={ 'apple_device': apple_device }) %}
-        {% if payload.data.apple_device %}
-          {# iOS #}
-          {% set push = namespace(d={}) %}
-          {% set payload.data = dict(payload.data, **{ 'subtitle': subtitle }) %}
-          {% set push.d = dict(push.d, **{ 'interruption-level': interruption_level }) %}
-          {% if notification_link|length %}{% set payload.data = dict(payload.data, **{ 'url': notification_link }) %}{% endif %}
-          {% if attachment_type == 'camera_entity' %}{% set payload.data = dict(payload.data, **{ 'entity_id': attachment_camera_entity }) %}{% endif %}
-          {% set payload.data = dict(payload.data, **{ 'push': push.d }) %}
-        {% else %}
-          {# Android #}
-          {% set payload.data = dict(payload.data, **{ 'subject': subtitle }) %}
-          {% set payload.data = dict(payload.data, **{ 'visibility': visibility }) %}
-          {% set payload.data = dict(payload.data, **{ 'importance': importance }) %}
-          {% if android_high_priority %}{% set payload.data = dict(payload.data, **{ 'priority': 'high', 'ttl': 0 }) %}{% endif %}
-          {% if notification_link|length %}{% set payload.data = dict(payload.data, **{ 'clickAction': notification_link }) %}{% endif %}
-          {% if attachment_type == 'camera_entity' and (media_url|length) %}{% set payload.data = dict(payload.data, **{ 'image': media_url }) %}{% endif %}
-          {% if notification_icon|length %}{% set payload.data = dict(payload.data, **{ 'notification_icon': notification_icon }) %}{% endif %}
-          {% if enable_icon_color %}{% set payload.data = dict(payload.data, **{ 'color': icon_color_hex }) %}{% endif %}
-          {% if enable_timeout and clear_on_timeout %}{% set payload.data = dict(payload.data, **{ 'timeout': timeout_seconds }) %}{% endif %}
-          {% if channel|length %}{% set payload.data = dict(payload.data, **{ 'channel': channel }) %}{% endif %}
-          {% if persist %}{% set payload.data = dict(payload.data, **{ 'persistent': persist }) %}{% endif %}
-          {% if car_ui %}{% set payload.data = dict(payload.data, **{ 'car_ui': car_ui }) %}{% endif %}
-        {% endif %}
-        {# Common  #}
-        {% set payload.data = dict(payload.data, **{ 'actions': options }) %}
-        {% set payload.data = dict(payload.data, **{ 'tag': tag }) %}
-        {% if group|length %}{% set payload.data = dict(payload.data, **{ 'group': group }) %}{% endif %}
-        {{ payload.data }}
 
   ##############################
-  # Send Notification
+  # Send Notification to multiple devices
   ##############################
-  - alias: "Send notification"
-    service: "{{ notify_service }}"
-    data:
-      title: "{{ title }}"
-      message: "{{ message }}"
-      data: "{{ notification_data }}"
+  - repeat:
+      for_each: "{{ notify_device }}"
+      sequence:
+        - variables: #setup notify_service
+            notify_service: >-
+              {{ "notify.mobile_app_{id}".format(id=device_attr(repeat.item,'name')|slugify) }}
+        - alias: Setup Payload
+          variables:
+            options: >-
+              {{ [option_one, option_two, option_three] | selectattr('enabled') | list }}
+            # Build OS specific notification payloads.
+            notification_data: >-
+              {% set apple_device = 'APPLE' in (device_attr(repeat.item, "manufacturer")|upper) %}
+              {% set payload = namespace(data={ 'apple_device': apple_device }) %}
+              {% if payload.data.apple_device %}
+                {# iOS #}
+                {% set push = namespace(d={}) %}
+                {% set payload.data = dict(payload.data, **{ 'subtitle': subtitle }) %}
+                {% set push.d = dict(push.d, **{ 'interruption-level': interruption_level }) %}
+                {% if notification_link|length %}{% set payload.data = dict(payload.data, **{ 'url': notification_link }) %}{% endif %}
+                {% if attachment_type == 'camera_entity' %}{% set payload.data = dict(payload.data, **{ 'entity_id': attachment_camera_entity }) %}{% endif %}
+                {% set payload.data = dict(payload.data, **{ 'push': push.d }) %}
+              {% else %}
+                {# Android #}
+                {% set payload.data = dict(payload.data, **{ 'subject': subtitle }) %}
+                {% set payload.data = dict(payload.data, **{ 'visibility': visibility }) %}
+                {% set payload.data = dict(payload.data, **{ 'importance': importance }) %}
+                {% if android_high_priority %}{% set payload.data = dict(payload.data, **{ 'priority': 'high', 'ttl': 0 }) %}{% endif %}
+                {% if notification_link|length %}{% set payload.data = dict(payload.data, **{ 'clickAction': notification_link }) %}{% endif %}
+                {% if attachment_type == 'camera_entity' and (media_url|length) %}{% set payload.data = dict(payload.data, **{ 'image': media_url }) %}{% endif %}
+                {% if notification_icon|length %}{% set payload.data = dict(payload.data, **{ 'notification_icon': notification_icon }) %}{% endif %}
+                {% if enable_icon_color %}{% set payload.data = dict(payload.data, **{ 'color': icon_color_hex }) %}{% endif %}
+                {% if enable_timeout and clear_on_timeout %}{% set payload.data = dict(payload.data, **{ 'timeout': timeout_seconds }) %}{% endif %}
+                {% if channel|length %}{% set payload.data = dict(payload.data, **{ 'channel': channel }) %}{% endif %}
+                {% if persist %}{% set payload.data = dict(payload.data, **{ 'persistent': persist }) %}{% endif %}
+                {% if car_ui %}{% set payload.data = dict(payload.data, **{ 'car_ui': car_ui }) %}{% endif %}
+              {% endif %}
+              {# Common  #}
+              {% set payload.data = dict(payload.data, **{ 'actions': options }) %}
+              {% set payload.data = dict(payload.data, **{ 'tag': tag }) %}
+              {% if group|length %}{% set payload.data = dict(payload.data, **{ 'group': group }) %}{% endif %}
+              {{ payload.data }}
+        - alias: "Send notification"
+          service: "{{ notify_service }}"
+          data:
+            title: "{{ title }}"
+            message: "{{ message }}"
+            data: "{{ notification_data }}"
 
   ##############################
   # Evaluate Response
@@ -1256,9 +1265,9 @@ sequence:
   # Parse user response
   ##############################
   - alias: "Parse response into variable"
-    variables:
-      user_response: >-
-        {% set response = namespace(data={ 'payload': notification_data }) %}
+    variables: # {% set response = namespace(data={ 'payload': notification_data }) %}
+      user_response: >- 
+        {% set response = namespace(data={}) %}
         {% if not expect_response %}
         {% set response.data = dict(response.data, **{ 'result': "no_response" }) %}
         {% elif run_timeout_actions and wait.trigger == none %}
@@ -1297,20 +1306,26 @@ sequence:
         sequence: !input option_three_action # "{{ option_three_actions }}"
 
   ##############################
-  # Compatibility: iOS Clear Notification
+  # Clear Notification
   ##############################
   - alias: "Send clear notification commands"
     if:
-      - alias: "Should send clear notification command? (for iOS/macOS)?"
+      - alias: "Should send clear notification command?"
         condition: template
-        value_template: "{{ expect_response and enable_timeout and clear_on_timeout and notification_data.apple_device }}"
+        value_template: "{{ expect_response and enable_timeout and clear_on_timeout }}"
     then:
-      - alias: "Send clear notification command to iOS device"
-        service: "{{ notify_service }}"
-        data:
-          message: "clear_notification"
-          data:
-            tag: "{{ tag }}"
+      - repeat:
+          for_each: "{{ notify_device }}"
+          sequence:
+            - variables: #setup notify_service
+                notify_service: >-
+                  {{ "notify.mobile_app_{id}".format(id=device_attr(repeat.item,'name')|slugify) }}
+            - alias: "Send clear notification command to device"
+              service: "{{ notify_service }}"
+              data:
+                message: "clear_notification"
+                data:
+                  tag: "{{ tag }}"
 
   ##############################
   # Return user response
