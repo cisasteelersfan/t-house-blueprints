@@ -177,7 +177,7 @@ blueprint:
     confirm_enabled:
       name: "1️⃣ Option 1"
       description: "Show or hide this option."
-      default: True
+      default: False
       selector:
         boolean:
 
@@ -317,7 +317,7 @@ blueprint:
     dismiss_enabled:
       name: "2️⃣ Option 2"
       description: "Show or hide this option."
-      default: True
+      default: False
       selector:
         boolean:
 
@@ -457,7 +457,7 @@ blueprint:
     option_three_enabled:
       name: "3️⃣ Option 3"
       description: "Show or hide this option."
-      default: false
+      default: False
       selector:
         boolean:
 
@@ -940,8 +940,6 @@ sequence:
       # [Grouping]
       group: !input group
 
-      expect_response: "{{ enable_timeout or option_one_enabled or option_two_enabled or option_three_enabled }}" # If there's no timeout nor options, then no point waiting. Stop script.
-
   - alias: Android Configuration Options
     variables:
       # sticky: !input sticky # Unlikely to support due to potential for users thinking that notifications are stuck.
@@ -1120,6 +1118,10 @@ sequence:
           "{}".format('uri' if option_three_uri|length else ''): option_three_uri,
         }}}
 
+  - alias: Expect response
+    variables:
+      expect_response: "{{ enable_timeout or option_one_enabled or option_two_enabled or option_three_enabled }}" # If there's no timeout nor options, then no point waiting. Stop script.
+
   ##############################
   # Send Notification to multiple devices
   ##############################
@@ -1229,9 +1231,9 @@ sequence:
   # Parse user response
   ##############################
   - alias: "Parse response into variable"
-    variables:
-      user_response: >-
-        {% set response = namespace(data={ 'payload': notification_data }) %}
+    variables: # {% set response = namespace(data={ 'payload': notification_data }) %}
+      user_response: >- 
+        {% set response = namespace(data={}) %}
         {% if not expect_response %}
         {% set response.data = dict(response.data, **{ 'result': "no_response" }) %}
         {% elif run_timeout_actions and wait.trigger == none %}
