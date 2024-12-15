@@ -940,6 +940,8 @@ sequence:
       # [Grouping]
       group: !input group
 
+      expect_response: "{{ enable_timeout or option_one_enabled or option_two_enabled or option_three_enabled }}" # If there's no timeout nor options, then no point waiting. Stop script.
+
   - alias: Android Configuration Options
     variables:
       # sticky: !input sticky # Unlikely to support due to potential for users thinking that notifications are stuck.
@@ -1131,7 +1133,6 @@ sequence:
           variables:
             options: >-
               {{ [option_one, option_two, option_three] | selectattr('enabled') | list }}
-            expect_response: "{{ enable_timeout or option_one_enabled or option_two_enabled or option_three_enabled }}" # If there's no timeout nor options, then no point waiting. Stop script.
             # Build OS specific notification payloads.
             notification_data: >-
               {% set apple_device = 'APPLE' in (device_attr(repeat.item, "manufacturer")|upper) %}
