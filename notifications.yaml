@@ -42,6 +42,9 @@ blueprint:
       <details>
       <summary>Expand/collapse changelog</summary>
 
+      ### Version 2.0.5
+       - modify multiples devices => merge multi devices from samuelthng that I missed...
+
       ### Version 2.0.4
       - suppport notifications to multiples devices
 
@@ -123,9 +126,9 @@ blueprint:
     # Input: Notification Strategy
     ##############################
     notify_device:
-      name: "📲 Device to notify"
+      name: "📲 Devices to notify"
       description: >-
-        Device needs to run the official [Home Assistant Companion](https://companion.home-assistant.io/) app to receive notifications.<br><br>
+        Devices needs to run the official [Home Assistant Companion](https://companion.home-assistant.io/) app to receive notifications.<br><br>
       default: []
       selector:
         device:
@@ -1039,6 +1042,16 @@ sequence:
     variables:
       script_notify_device: !input notify_device
       notify_device: "{{ iif(field_notify_device is defined, field_notify_device, script_notify_device) }}"
+      notify_service: >-
+        {% if notify_device is iterable and (notify_device is not string and notify_device is not mapping) %}
+          {% set devices = namespace(data = [])%}
+          {% for device in notify_device %}
+            {% set devices.data = devices.data + ["notify.mobile_app_{id}".format(id=device_attr(device,'name')|slugify)] %}
+          {% endfor %}
+          {{ devices.data | list }}
+        {% else %}
+          {{ ["notify.mobile_app_{id}".format(id=device_attr(notify_device,'name')|slugify)] | list }}
+        {% endif %}
 
   - alias: Option 1
     variables:
@@ -1152,6 +1165,56 @@ sequence:
           "{}".format('uri' if option_three_uri|length else ''): option_three_uri,
         }}}
 
+  - alias: Setup Payload
+    variables:
+      options: >-
+        {{ [option_one, option_two, option_three] | selectattr('enabled') | list }}
+      # Build OS specific notification payloads.
+      notification_data: >-
+        {% set notifications = namespace(data=[])%}
+        {% set memo = namespace(data={})%}
+        {% for device in notify_device %}
+          {% set apple_device = 'APPLE' in (device_attr(device, "manufacturer")|upper) %}
+          {% set memo_key = 'APPLE' if apple_device else 'ANDROID' %}
+          {% if not memo_key in memo.data %}
+            {# If OS payload not built yet, evaluate it. #}
+            {% set payload = namespace(data={ 'apple_device': apple_device }) %}
+            {% if payload.data.apple_device %}
+              {# iOS #}
+              {% set push = namespace(d={}) %}
+              {% set payload.data = dict(payload.data, **{ 'subtitle': subtitle }) %}
+              {% set push.d = dict(push.d, **{ 'interruption-level': interruption_level }) %}
+              {% if notification_link|length %}{% set payload.data = dict(payload.data, **{ 'url': notification_link }) %}{% endif %}
+              {% if attachment_type == 'camera_entity' %}{% set payload.data = dict(payload.data, **{ 'entity_id': attachment_camera_entity }) %}{% endif %}
+              {% set payload.data = dict(payload.data, **{ 'push': push.d }) %}
+            {% else %}
+              {# Android #}
+              {% set payload.data = dict(payload.data, **{ 'subject': subtitle }) %}
+              {% set payload.data = dict(payload.data, **{ 'visibility': visibility }) %}
+              {% set payload.data = dict(payload.data, **{ 'importance': importance }) %}
+              {% if android_high_priority %}{% set payload.data = dict(payload.data, **{ 'priority': 'high', 'ttl': 0 }) %}{% endif %}
+              {% if notification_link|length %}{% set payload.data = dict(payload.data, **{ 'clickAction': notification_link }) %}{% endif %}
+              {% if attachment_type == 'camera_entity' and (media_url|length) %}{% set payload.data = dict(payload.data, **{ 'image': media_url }) %}{% endif %}
+              {% if notification_icon|length %}{% set payload.data = dict(payload.data, **{ 'notification_icon': notification_icon }) %}{% endif %}
+              {% if enable_icon_color %}{% set payload.data = dict(payload.data, **{ 'color': icon_color_hex }) %}{% endif %}
+              {% if enable_timeout and clear_on_timeout %}{% set payload.data = dict(payload.data, **{ 'timeout': timeout_seconds }) %}{% endif %}
+              {% if channel|length %}{% set payload.data = dict(payload.data, **{ 'channel': channel }) %}{% endif %}
+              {% if persist %}{% set payload.data = dict(payload.data, **{ 'persistent': persist }) %}{% endif %}
+              {% if car_ui %}{% set payload.data = dict(payload.data, **{ 'car_ui': car_ui }) %}{% endif %}
+            {% endif %}
+            {# Common  #}
+            {% set payload.data = dict(payload.data, **{ 'actions': options }) %}
+            {% set payload.data = dict(payload.data, **{ 'tag': tag }) %}
+            {% if group|length %}{% set payload.data = dict(payload.data, **{ 'group': group }) %}{% endif %}
+            {# Push payload to array  #}
+            {% set memo.data = dict(memo.data, **{ "{}".format(memo_key): payload.data }) %}
+          {% endif %}
+          {# Update notification data array with the memoized payload. #}
+          {% set notifications.data = notifications.data + [memo.data[memo_key]] %}
+          {% endfor %}
+
+        {{ notifications.data }}
+
   - alias: Expect response
     variables:
       expect_response: "{{ enable_timeout or option_one_enabled or option_two_enabled or option_three_enabled }}" # If there's no timeout nor options, then no point waiting. Stop script.
@@ -1159,54 +1222,16 @@ sequence:
   ##############################
   # Send Notification to multiple devices
   ##############################
-  - repeat:
-      for_each: "{{ notify_device }}"
+  - alias: "Send notification"
+    repeat:
+      for_each: "{{ notify_service }}"
       sequence:
-        - variables: #setup notify_service
-            notify_service: >-
-              {{ "notify.mobile_app_{id}".format(id=device_attr(repeat.item,'name')|slugify) }}
-        - alias: Setup Payload
-          variables:
-            options: >-
-              {{ [option_one, option_two, option_three] | selectattr('enabled') | list }}
-            # Build OS specific notification payloads.
-            notification_data: >-
-              {% set apple_device = 'APPLE' in (device_attr(repeat.item, "manufacturer")|upper) %}
-              {% set payload = namespace(data={ 'apple_device': apple_device }) %}
-              {% if payload.data.apple_device %}
-                {# iOS #}
-                {% set push = namespace(d={}) %}
-                {% set payload.data = dict(payload.data, **{ 'subtitle': subtitle }) %}
-                {% set push.d = dict(push.d, **{ 'interruption-level': interruption_level }) %}
-                {% if notification_link|length %}{% set payload.data = dict(payload.data, **{ 'url': notification_link }) %}{% endif %}
-                {% if attachment_type == 'camera_entity' %}{% set payload.data = dict(payload.data, **{ 'entity_id': attachment_camera_entity }) %}{% endif %}
-                {% set payload.data = dict(payload.data, **{ 'push': push.d }) %}
-              {% else %}
-                {# Android #}
-                {% set payload.data = dict(payload.data, **{ 'subject': subtitle }) %}
-                {% set payload.data = dict(payload.data, **{ 'visibility': visibility }) %}
-                {% set payload.data = dict(payload.data, **{ 'importance': importance }) %}
-                {% if android_high_priority %}{% set payload.data = dict(payload.data, **{ 'priority': 'high', 'ttl': 0 }) %}{% endif %}
-                {% if notification_link|length %}{% set payload.data = dict(payload.data, **{ 'clickAction': notification_link }) %}{% endif %}
-                {% if attachment_type == 'camera_entity' and (media_url|length) %}{% set payload.data = dict(payload.data, **{ 'image': media_url }) %}{% endif %}
-                {% if notification_icon|length %}{% set payload.data = dict(payload.data, **{ 'notification_icon': notification_icon }) %}{% endif %}
-                {% if enable_icon_color %}{% set payload.data = dict(payload.data, **{ 'color': icon_color_hex }) %}{% endif %}
-                {% if enable_timeout and clear_on_timeout %}{% set payload.data = dict(payload.data, **{ 'timeout': timeout_seconds }) %}{% endif %}
-                {% if channel|length %}{% set payload.data = dict(payload.data, **{ 'channel': channel }) %}{% endif %}
-                {% if persist %}{% set payload.data = dict(payload.data, **{ 'persistent': persist }) %}{% endif %}
-                {% if car_ui %}{% set payload.data = dict(payload.data, **{ 'car_ui': car_ui }) %}{% endif %}
-              {% endif %}
-              {# Common  #}
-              {% set payload.data = dict(payload.data, **{ 'actions': options }) %}
-              {% set payload.data = dict(payload.data, **{ 'tag': tag }) %}
-              {% if group|length %}{% set payload.data = dict(payload.data, **{ 'group': group }) %}{% endif %}
-              {{ payload.data }}
-        - alias: "Send notification"
-          service: "{{ notify_service }}"
+        - service: "{{ repeat.item }}"
           data:
             title: "{{ title }}"
             message: "{{ message }}"
-            data: "{{ notification_data }}"
+            data: >-
+              {{ notification_data[repeat.index - 1] }}
 
   ##############################
   # Evaluate Response
@@ -1265,9 +1290,9 @@ sequence:
   # Parse user response
   ##############################
   - alias: "Parse response into variable"
-    variables: # {% set response = namespace(data={ 'payload': notification_data }) %}
+    variables:
       user_response: >- 
-        {% set response = namespace(data={}) %}
+        {% set response = namespace(data={ 'payload': notification_data }) %}
         {% if not expect_response %}
         {% set response.data = dict(response.data, **{ 'result': "no_response" }) %}
         {% elif run_timeout_actions and wait.trigger == none %}
@@ -1309,19 +1334,16 @@ sequence:
   # Clear Notification
   ##############################
   - alias: "Send clear notification commands"
-    if:
-      - alias: "Should send clear notification command?"
-        condition: template
-        value_template: "{{ expect_response and enable_timeout and clear_on_timeout }}"
-    then:
-      - repeat:
-          for_each: "{{ notify_device }}"
-          sequence:
-            - variables: #setup notify_service
-                notify_service: >-
-                  {{ "notify.mobile_app_{id}".format(id=device_attr(repeat.item,'name')|slugify) }}
+    repeat:
+      for_each: "{{ notify_service }}"
+      sequence:
+        - if:
+            - alias: "Should send clear notification command?"
+              condition: template
+              value_template: "{{ expect_response and enable_timeout and clear_on_timeout and notification_data[repeat.index - 1].apple_device }}"
+          then:
             - alias: "Send clear notification command to device"
-              service: "{{ notify_service }}"
+              service: "{{ repeat.item }}"
               data:
                 message: "clear_notification"
                 data:
