@@ -128,6 +128,7 @@ blueprint:
     notify_device:
       name: "📲 Devices to notify"
       description: >-
+        Can be overrided.
         Devices needs to run the official [Home Assistant Companion](https://companion.home-assistant.io/) app to receive notifications.<br><br>
       default: []
       selector:
@@ -146,19 +147,19 @@ blueprint:
       input:
         title:
           name: "🏷️ Title"
-          description: "The title of the notification.  \n\n`Optional`\n"
+          description: "The title of the notification. \n\n`Optional` Can be overrided.\n"
           default: ""
           selector:
             text:
         subtitle:
           name: "🏷️ Subtitle"
-          description: "The subtitle of the notification.  \n\n`Optional`\n"
+          description: "The subtitle of the notification. \n\n`Optional` Can be overrided.\n"
           default: ""
           selector:
             text:
         message:
           name: "💬 Message"
-          description: "The message body to display on the notification.  \n\n`🤖 Android`: You may add [HTML formatting](https://companion.home-assistant.io/docs/notifications/notifications-basic?_highlight=tag#notification-message-html-formatting) to customise the look of the message."
+          description: "The message body to display on the notification. \n\n`🤖 Android`: You may add [HTML formatting](https://companion.home-assistant.io/docs/notifications/notifications-basic?_highlight=tag#notification-message-html-formatting) to customise the look of the message. Can be overrided."
           default: ""
           selector:
             text:
@@ -191,7 +192,7 @@ blueprint:
       input: 
         confirm_enabled:
           name: "1️⃣ Option 1"
-          description: "Show or hide this option."
+          description: "Show or hide this option. Can be overrided."
           default: False
           selector:
             boolean:
@@ -334,7 +335,7 @@ blueprint:
       input:
         dismiss_enabled:
           name: "2️⃣ Option 2"
-          description: "Show or hide this option."
+          description: "Show or hide this option. Can be overrided."
           default: False
           selector:
             boolean:
@@ -477,7 +478,7 @@ blueprint:
       input: 
         option_three_enabled:
           name: "3️⃣ Option 3"
-          description: "Show or hide this option."
+          description: "Show or hide this option. Can be overrided."
           default: False
           selector:
             boolean:
@@ -623,13 +624,13 @@ blueprint:
       input: 
         enable_timeout:
           name: "⌛️ Enable Timeout"
-          description: "Require script to stop listening after the set duration.<br><br>👍🏻 Recommended to enable.<br>⚠️ If disabled, script will wait for response indefinitely until the next time it is triggered."
+          description: "Require script to stop listening after the set duration. Can be overrided.<br><br>👍🏻 Recommended to enable.<br>⚠️ If disabled, script will wait for response indefinitely until the next time it is triggered."
           default: true # Default `true` for backward compatibility.
           selector:
             boolean:
         timeout:
           name: "⌛️ Timeout Duration"
-          description: "Amount of time to wait for an action response before firing timeout action.  \n\n👍🏻 Recommended: ≥1 minute, to allow notifications to be sent.  \nDefault: 15 minutes. \n"
+          description: "Amount of time to wait for an action response before firing timeout action.  \n\n👍🏻 Recommended: ≥1 minute, to allow notifications to be sent.  \nDefault: 15 minutes. Can be overrided.\n"
           default:
             hours: 0
             minutes: 15
@@ -639,13 +640,13 @@ blueprint:
               enable_day: false
         run_timeout_actions:
           name: "⌛️ Enable Timeout Action(s)"
-          description: "Run timeout actions upon a timeout event.<br><br>👍🏻 Recommended to enable.<br>⚠️ If disabled, script will timeout without executing any timeout actions."
+          description: "Run timeout actions upon a timeout event.<br><br>👍🏻 Recommended to enable.<br>⚠️ If disabled, script will timeout without executing any timeout actions. Can be overrided."
           default: true # Default `true` for backward compatibility.
           selector:
             boolean:
         timeout_action:
           name: "⌛️ Timeout Action(s)"
-          description: "Action to run when notification response is timed out.  \n\n❔ Leave empty if no actions should be run  \n\n⚠️ Android Users: Note, URI options do not stop the timeout countdown. This action could be run after pressing the URI option.\n❔ Android Users: Workaround for the above, you may disable `⌛️ Run timeout action(s) when notification cleared` and manually clear the notification after selecting your URI option. \n\n`Optional`"
+          description: "Action to run when notification response is timed out. Can be overrided. \n\n❔ Leave empty if no actions should be run  \n\n⚠️ Android Users: Note, URI options do not stop the timeout countdown. This action could be run after pressing the URI option.\n❔ Android Users: Workaround for the above, you may disable `⌛️ Run timeout action(s) when notification cleared` and manually clear the notification after selecting your URI option. \n\n`Optional`"
           default: []
           selector:
             action:
@@ -677,7 +678,7 @@ blueprint:
       input: 
         notification_link:
           name: "🔗 Notification Link"
-          description: "Link to navigate to upon clicking the notification.  \n\n Examples:  \n - Home Assistant relative links: `/config/updates` or `/lovelace/home`  \n - Apps: `app://<package name>`  \n - Entity `More Info` Panel: `entityId:<entity_ID>`  \n - Deep links: `deep-link://<deep_link>`  \n\nSee [documentation](https://companion.home-assistant.io/docs/notifications/notifications-basic/#opening-a-url) for more information and options.  \n\n`Optional`"
+          description: "Link to navigate to upon clicking the notification.  Can be overrided. \n\n Examples:  \n - Home Assistant relative links: `/config/updates` or `/lovelace/home`  \n - Apps: `app://<package name>`  \n - Entity `More Info` Panel: `entityId:<entity_ID>`  \n - Deep links: `deep-link://<deep_link>`  \n\nSee [documentation](https://companion.home-assistant.io/docs/notifications/notifications-basic/#opening-a-url) for more information and options.  \n\n`Optional`"
           default: ""
           selector:
             text:
@@ -694,7 +695,7 @@ blueprint:
           description: >
             Choose to send an attachment along with the notification.<br>
 
-            `Optional`
+            `Optional` Can be overrided.
           default: "none"
           selector:
             select:
@@ -714,6 +715,7 @@ blueprint:
             <table><tr><td> <a target="_blank" href="https://companion.home-assistant.io/docs/notifications/dynamic-content#camera-stream"> Camera Stream</a></td><td> <a target="_blank" href="https://companion.home-assistant.io/docs/notifications/notification-attachments#automatic-snapshots">🤖 Automatic Snapshots</a></td></tr></table><br>
 
             ❔ Only used with `Attachment Type: Camera`
+            Can be overrided.
           default: ""
           selector:
             entity:
