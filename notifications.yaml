@@ -948,6 +948,13 @@ fields:
   #   selector:
   #     action:
 
+  field_persist:
+    name: "🚩 Persistent Notification"
+    description: "Override persistent Notification.  \n\n❔ This option blocks `⌛️ Run timeout action(s) when notification cleared`  \n\n`🤖 Android Only`"
+    default: false
+    selector:
+      boolean:
+
 sequence:
   ##############################
   # Setup commons Variables
@@ -985,7 +992,8 @@ sequence:
       channel: !input channel
       visibility: !input visibility
       importance: !input importance
-      persist: !input persist
+      script_persist: !input persist
+      persist: "{{ iif(field_persist is defined, field_persist, script_persist) }}"
       # chronometer: !input chronometer # Unlikely to support, depends on template flexibility
       # alert_once: !input alert_once
       car_ui: !input car_ui
