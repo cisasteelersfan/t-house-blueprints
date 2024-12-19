@@ -44,7 +44,8 @@ blueprint:
 
       ### Version 2.0.5
        - modify multiples devices => merge multi devices from samuelthng that I missed...
-
+       - added `notification_link` field
+       
       ### Version 2.0.4
       - suppport notifications to multiples devices
 
