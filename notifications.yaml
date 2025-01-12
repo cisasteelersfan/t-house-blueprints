@@ -1,6 +1,6 @@
 mode: restart
 blueprint:
-  name: 🔔 Notifications (Version 2.0.5 Beta)
+  name: 🔔 Notifications (Version 2.1.0 Beta)
   source_url: https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml
   homeassistant:
     min_version: 2024.06.0
@@ -9,7 +9,7 @@ blueprint:
   description: >-
     <div>
       <h2>🔔 Notifications</h2>
-      <b>Version 2.0.5 Beta</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
+      <b>Version 2.1.0 Beta</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
       </div>
       <br>
 
@@ -17,23 +17,25 @@ blueprint:
 
     ### Features:
 
-      > 📲 Sends notification to [Home Assistant Companion](https://companion.home-assistant.io/)
+      > 📲 Sends notification to [Home Assistant Companion](https://companion.home-assistant.io/)
 
-      > 3️⃣ Up to 3 customisable, action buttons (Previously: ✅ Confirm and ❌ Dismiss Button)
+      > 3️⃣ Up to 3 customisable, action buttons (Previously: ✅ Confirm and ❌ Dismiss Button)
 
-      > ⌛️ Timeout actions with custom duration, fired if no option response received
+      > ⌛️ Timeout actions with custom duration, fired if no option response received
 
-      > 🧹 Clear notification after timeout
+      > 🧹 Clear notification after timeout
 
-      > 📸 Camera Snapshots
+      > 📸 Camera Snapshots
 
-      > 🔗 Custom Notification Link
+      > 🔗 Custom Notification Link
 
-      > 📜 Flexible [script fields](https://www.home-assistant.io/integrations/script/#fields)
+      > 📜 Flexible [script fields](https://www.home-assistant.io/integrations/script/#fields)
 
-      > 🍎 Supports iOS
+      > 🎯 Zone-based notification delivery
 
-      > 🤖 Supports Android
+      > 🍎 Supports iOS
+
+      > 🤖 Supports Android
 
       Examples can be found [here](https://community.home-assistant.io/t/notification-with-confirm-dismiss-and-timeout/551552#example-usage-6)
 
@@ -42,6 +44,9 @@ blueprint:
       <details>
       <summary>Expand/collapse changelog</summary>
 
+      ### Version 2.1.0
+      - Added zone-based message functionality
+    
       ### Version 2.0.5
        - modify multiples devices => merge multi devices from samuelthng that I missed...
        - added `notification_link` field
@@ -126,17 +131,44 @@ blueprint:
     ##############################
     # Input: Notification Strategy
     ##############################
-    notify_device:
-      name: "📲 Devices to notify"
-      description: >-
-        Can be overrided.
-        Devices needs to run the official [Home Assistant Companion](https://companion.home-assistant.io/) app to receive notifications.<br><br>
-      default: []
-      selector:
-        device:
-          multiple: true
-          filter:
-            - integration: mobile_app
+    target:
+      name: Notification target
+      icon: mdi:bullseye-arrow
+      description: Control who will receive the notification.
+      input:
+        notify_device:
+          name: "📲 Devices to notify"
+          description: >-
+            Can be overrided.
+            Devices needs to run the official [Home Assistant Companion](https://companion.home-assistant.io/) app to receive notifications.<br><br>
+          default: []
+          selector:
+            device:
+              multiple: true
+              filter:
+                - integration: mobile_app
+        target:
+          name: Send the notification to
+          description: Target of the notification.
+          default: send_to_all
+          selector:
+            select:
+              options:
+                - label: Everyone
+                  value: send_to_all
+                - label: Everyone inside (a) zone(s) (Use the zone input below)
+                  value: send_to_persons_in_zones
+                - label: Everyone outside (a) zone(s) (Use the zone input below)
+                  value: send_to_persons_not_in_zones
+        zones:
+          name: Zones (Optional)
+          description: Only usefull if the Target of the notification was set to "Everyone inside (a) zone(s)" or "Everyone outside (a) zone(s)".
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: zone
 
     ##############################
     # Input: Notification Content
@@ -1053,16 +1085,72 @@ sequence:
     variables:
       script_notify_device: !input notify_device
       notify_device: "{{ iif(field_notify_device is defined, field_notify_device, script_notify_device) }}"
-      notify_service: >-
-        {% if notify_device is iterable and (notify_device is not string and notify_device is not mapping) %}
-          {% set devices = namespace(data = [])%}
+      target: !input target
+      zones: !input zones
+      
+  - alias: Zone-based Device Filtering
+    variables:
+      filtered_devices: >
+        {% set final_devices = namespace(data = []) %}
+        {% if target == 'send_to_all' %}
+          {% set final_devices.data = notify_device %}
+        {% elif target == 'send_to_persons_in_zones' %}
           {% for device in notify_device %}
-            {% set devices.data = devices.data + ["notify.mobile_app_{id}".format(id=device_attr(device,'name')|slugify)] %}
+            {% set tracker_id = 'device_tracker.' + device_attr(device,'name')|slugify %}
+            {% set device_state = states(tracker_id)|lower %}
+            {% set zone_name = zones[0].split('.')[1]|lower %}
+            {% if device_state == zone_name %}
+              {% set final_devices.data = final_devices.data + [device] %}
+            {% endif %}
           {% endfor %}
-          {{ devices.data | list }}
-        {% else %}
-          {{ ["notify.mobile_app_{id}".format(id=device_attr(notify_device,'name')|slugify)] | list }}
+        {% elif target == 'send_to_persons_not_in_zones' %}
+          {% for device in notify_device %}
+            {% set tracker_id = 'device_tracker.' + device_attr(device,'name')|slugify %}
+            {% set device_state = states(tracker_id)|lower %}
+            {% set zone_name = zones[0].split('.')[1]|lower %}
+            {% if device_state != zone_name %}
+              {% set final_devices.data = final_devices.data + [device] %}
+            {% endif %}
+          {% endfor %}
         {% endif %}
+        {{ final_devices.data }}
+
+      debug_info: >
+        {% set debug = namespace(messages=[]) %}
+        {% set debug.messages = debug.messages + ['Target mode: ' ~ target] %}
+        {% set debug.messages = debug.messages + ['Zones is string: ' ~ (zones is string)] %}
+        {% set debug.messages = debug.messages + ['Zones is sequence: ' ~ (zones is sequence)] %}
+        {% set debug.messages = debug.messages + ['Zones raw: ' ~ zones] %}
+        {% set debug.messages = debug.messages + ['Zone name: ' ~ zones[0].split('.')[1]|lower] %}
+        {% set debug.messages = debug.messages + ['Input devices count: ' ~ notify_device|length] %}
+        {% for device in notify_device %}
+          {% set device_name = device_attr(device,'name') %}
+          {% set tracker_id = 'device_tracker.' + device_name|slugify %}
+          {% set device_state = states(tracker_id)|lower %}
+          {% set zone_name = zones[0].split('.')[1]|lower %}
+          {% set debug.messages = debug.messages + ['Device: ' ~ device_name ~ ' | Tracker: ' ~ tracker_id ~ ' | State: ' ~ states(tracker_id) ~ ' | Zone match: ' ~ zone_name ~ '(' ~ (device_state == zone_name) ~ ')'] %}
+        {% endfor %}
+        {% set zone_name = zones[0].split('.')[1]|lower %}
+        {% set debug.messages = debug.messages + ['Zone: ' ~ zones[0] ~ ' | Name: ' ~ zone_name ~ ' | State: ' ~ states(zones[0])] %}
+        {% set debug.messages = debug.messages + ['Filtered devices: ' ~ (filtered_devices|list|length) ~ ' devices'] %}
+        {% for device in filtered_devices %}
+          {% set debug.messages = debug.messages + ['Filtered device: ' ~ device_attr(device,'name')] %}
+        {% endfor %}
+        {% set debug.messages = debug.messages + ['Notify services: ' ~ notify_service|join(', ')] %}
+        {{ debug.messages|join(' | ') }}
+
+      notify_service: >-
+        {% set devices = namespace(data = [])%}
+        {% for device in filtered_devices %}
+          {% set devices.data = devices.data + ["notify.mobile_app_{id}".format(id=device_attr(device,'name')|slugify)] %}
+        {% endfor %}
+        {{ devices.data }}
+     
+
+  - service: persistent_notification.create
+    data:
+      title: "Zone Filtering Debug Info"
+      message: "{{ debug_info }}"
 
   - alias: Option 1
     variables:
