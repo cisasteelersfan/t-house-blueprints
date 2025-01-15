@@ -1,6 +1,6 @@
 mode: restart
 blueprint:
-  name: 🔔 Notifications (Version 2.1.0)
+  name: 🔔 Notifications (Version 2.1.1 Beta)
   source_url: https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml
   homeassistant:
     min_version: 2024.06.0
@@ -9,7 +9,7 @@ blueprint:
   description: >-
     <div>
       <h2>🔔 Notifications</h2>
-      <b>Version 2.1.0</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
+      <b>Version 2.1.1 Beta</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
       </div>
       <br>
 
@@ -23,7 +23,7 @@ blueprint:
 
       > ⌛️ Timeout actions with custom duration, fired if no option response received
 
-      > 🧹 Clear notification after timeout
+      > 🧹 Clear notification after timeout and after response received
 
       > 📸 Camera Snapshots
 
@@ -43,6 +43,9 @@ blueprint:
 
       <details>
       <summary>Expand/collapse changelog</summary>
+
+      ### Version 2.1.1
+      - Added: Clear Notification if response received
 
       ### Version 2.1.0
       - Added zone-based message functionality
@@ -695,6 +698,12 @@ blueprint:
           default: false
           selector:
             boolean:
+        clear_on_response:
+          name: "🧹 Clear notifications on response"
+          description: "Clear notifications on all devices when any device responds to the notification."
+          default: false
+          selector:
+            boolean:
         persist:
           name: "🚩 Persistent Notification"
           description: "Prevents notifications from being swiped away by accident.  \n\n❔ This option blocks `⌛️ Run timeout action(s) when notification cleared`  \n\n`🤖 Android Only`"
@@ -1058,6 +1067,8 @@ sequence:
       script_run_timeout_actions: !input run_timeout_actions
       run_timeout_actions: "{{ iif(field_run_timeout_actions is defined, field_run_timeout_actions, script_run_timeout_actions) }}"
       swipe_away_as_timeout: !input swipe_away_as_timeout
+      # [Clear on response]
+      clear_on_response: !input clear_on_response
 
   - alias: Attachments
     variables:
@@ -1430,7 +1441,25 @@ sequence:
         sequence: !input option_three_action # "{{ option_three_actions }}"
 
   ##############################
-  # Clear Notification
+  # Clear Notification if response received
+  ##############################
+  - alias: "Clear notifications on response"
+    if:
+      - condition: template
+        value_template: >
+          {{ clear_on_response and user_response.result not in ['timeout', 'notification_cleared', 'no_response'] }}
+    then:
+      - repeat:
+          for_each: "{{ notify_service }}"
+          sequence:
+            - service: "{{ repeat.item }}"
+              data:
+                message: "clear_notification"
+                data:
+                  tag: "{{ tag }}"
+
+  ##############################
+  # Clear Notification on timeout
   ##############################
   - alias: "Send clear notification commands"
     repeat:
@@ -1439,7 +1468,7 @@ sequence:
         - if:
             - alias: "Should send clear notification command?"
               condition: template
-              value_template: "{{ expect_response and enable_timeout and clear_on_timeout and notification_data[repeat.index - 1].apple_device }}"
+              value_template: "{{ expect_response and enable_timeout and clear_on_timeout }}"
           then:
             - alias: "Send clear notification command to device"
               service: "{{ repeat.item }}"
