@@ -148,7 +148,7 @@ blueprint:
               filter:
                 - integration: mobile_app
         target:
-          name: Send the notification to
+          name: "🎯 Send the notification to"
           description: Target of the notification.
           default: send_to_all
           selector:
