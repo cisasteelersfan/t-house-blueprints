@@ -1,6 +1,6 @@
 mode: restart
 blueprint:
-  name: 🔔 Notifications (Version 2.1.0 Beta)
+  name: 🔔 Notifications (Version 2.1.0)
   source_url: https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml
   homeassistant:
     min_version: 2024.06.0
@@ -9,7 +9,7 @@ blueprint:
   description: >-
     <div>
       <h2>🔔 Notifications</h2>
-      <b>Version 2.1.0 Beta</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
+      <b>Version 2.1.0</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
       </div>
       <br>
 
