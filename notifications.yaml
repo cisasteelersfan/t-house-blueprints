@@ -1115,29 +1115,29 @@ sequence:
         {% endif %}
         {{ final_devices.data }}
 
-      debug_info: >
-        {% set debug = namespace(messages=[]) %}
-        {% set debug.messages = debug.messages + ['Target mode: ' ~ target] %}
-        {% set debug.messages = debug.messages + ['Zones is string: ' ~ (zones is string)] %}
-        {% set debug.messages = debug.messages + ['Zones is sequence: ' ~ (zones is sequence)] %}
-        {% set debug.messages = debug.messages + ['Zones raw: ' ~ zones] %}
-        {% set debug.messages = debug.messages + ['Zone name: ' ~ zones[0].split('.')[1]|lower] %}
-        {% set debug.messages = debug.messages + ['Input devices count: ' ~ notify_device|length] %}
-        {% for device in notify_device %}
-          {% set device_name = device_attr(device,'name') %}
-          {% set tracker_id = 'device_tracker.' + device_name|slugify %}
-          {% set device_state = states(tracker_id)|lower %}
-          {% set zone_name = zones[0].split('.')[1]|lower %}
-          {% set debug.messages = debug.messages + ['Device: ' ~ device_name ~ ' | Tracker: ' ~ tracker_id ~ ' | State: ' ~ states(tracker_id) ~ ' | Zone match: ' ~ zone_name ~ '(' ~ (device_state == zone_name) ~ ')'] %}
-        {% endfor %}
-        {% set zone_name = zones[0].split('.')[1]|lower %}
-        {% set debug.messages = debug.messages + ['Zone: ' ~ zones[0] ~ ' | Name: ' ~ zone_name ~ ' | State: ' ~ states(zones[0])] %}
-        {% set debug.messages = debug.messages + ['Filtered devices: ' ~ (filtered_devices|list|length) ~ ' devices'] %}
-        {% for device in filtered_devices %}
-          {% set debug.messages = debug.messages + ['Filtered device: ' ~ device_attr(device,'name')] %}
-        {% endfor %}
-        {% set debug.messages = debug.messages + ['Notify services: ' ~ notify_service|join(', ')] %}
-        {{ debug.messages|join(' | ') }}
+      # debug_info: >
+      #   {% set debug = namespace(messages=[]) %}
+      #   {% set debug.messages = debug.messages + ['Target mode: ' ~ target] %}
+      #   {% set debug.messages = debug.messages + ['Zones is string: ' ~ (zones is string)] %}
+      #   {% set debug.messages = debug.messages + ['Zones is sequence: ' ~ (zones is sequence)] %}
+      #   {% set debug.messages = debug.messages + ['Zones raw: ' ~ zones] %}
+      #   {% set debug.messages = debug.messages + ['Zone name: ' ~ zones[0].split('.')[1]|lower] %}
+      #   {% set debug.messages = debug.messages + ['Input devices count: ' ~ notify_device|length] %}
+      #   {% for device in notify_device %}
+      #     {% set device_name = device_attr(device,'name') %}
+      #     {% set tracker_id = 'device_tracker.' + device_name|slugify %}
+      #     {% set device_state = states(tracker_id)|lower %}
+      #     {% set zone_name = zones[0].split('.')[1]|lower %}
+      #     {% set debug.messages = debug.messages + ['Device: ' ~ device_name ~ ' | Tracker: ' ~ tracker_id ~ ' | State: ' ~ states(tracker_id) ~ ' | Zone match: ' ~ zone_name ~ '(' ~ (device_state == zone_name) ~ ')'] %}
+      #   {% endfor %}
+      #   {% set zone_name = zones[0].split('.')[1]|lower %}
+      #   {% set debug.messages = debug.messages + ['Zone: ' ~ zones[0] ~ ' | Name: ' ~ zone_name ~ ' | State: ' ~ states(zones[0])] %}
+      #   {% set debug.messages = debug.messages + ['Filtered devices: ' ~ (filtered_devices|list|length) ~ ' devices'] %}
+      #   {% for device in filtered_devices %}
+      #     {% set debug.messages = debug.messages + ['Filtered device: ' ~ device_attr(device,'name')] %}
+      #   {% endfor %}
+      #   {% set debug.messages = debug.messages + ['Notify services: ' ~ notify_service|join(', ')] %}
+      #   {{ debug.messages|join(' | ') }}
 
       notify_service: >-
         {% set devices = namespace(data = [])%}
@@ -1147,10 +1147,10 @@ sequence:
         {{ devices.data }}
      
 
-  - service: persistent_notification.create
-    data:
-      title: "Zone Filtering Debug Info"
-      message: "{{ debug_info }}"
+  # - service: persistent_notification.create
+  #   data:
+  #     title: "Zone Filtering Debug Info"
+  #     message: "{{ debug_info }}"
 
   - alias: Option 1
     variables:
