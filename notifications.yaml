@@ -1404,18 +1404,32 @@ sequence:
       user_response: >- 
         {% set response = namespace(data={ 'payload': notification_data }) %}
         {% if not expect_response %}
-        {% set response.data = dict(response.data, **{ 'result': "no_response" }) %}
-        {% elif run_timeout_actions and wait.trigger == none %}
-        {% set response.data = dict(response.data, **{ 'result': "timeout" }) %}
-        {% elif run_timeout_actions and swipe_away_as_timeout and wait.trigger.event.event_type == 'mobile_app_notification_cleared' %}
-        {% set response.data = dict(response.data, **{ 'result': "notification_cleared" }) %}
-        {% elif wait.trigger.event.data.action == option_one['action'] %}
-        {% set response.data = dict(response.data, **{ 'result': "option_one" }) %}
-        {% elif wait.trigger.event.data.action == option_two['action'] %}
-        {% set response.data = dict(response.data, **{ 'result': "option_two" }) %}
-        {% elif wait.trigger.event.data.action == option_three['action'] %}
-        {% set response.data = dict(response.data, **{ 'result': "option_three" }) %}
-        {%- endif %}
+          {% set response.data = dict(response.data, **{ 'result': 'no_response' }) %}
+        {% elif wait.trigger == none %}
+          {% if run_timeout_actions %}
+            {% set response.data = dict(response.data, **{ 'result': 'timeout' }) %}
+          {% else %}
+            {% set response.data = dict(response.data, **{ 'result': 'no_response' }) %}
+          {% endif %}
+        {% elif wait.trigger.event is defined %}
+          {% if run_timeout_actions and swipe_away_as_timeout and wait.trigger.event.event_type == 'mobile_app_notification_cleared' %}
+            {% set response.data = dict(response.data, **{ 'result': 'notification_cleared' }) %}
+          {% elif wait.trigger.event.data is defined %}
+            {% if wait.trigger.event.data.action == option_one['action'] %}
+              {% set response.data = dict(response.data, **{ 'result': 'option_one' }) %}
+            {% elif wait.trigger.event.data.action == option_two['action'] %}
+              {% set response.data = dict(response.data, **{ 'result': 'option_two' }) %}
+            {% elif wait.trigger.event.data.action == option_three['action'] %}
+              {% set response.data = dict(response.data, **{ 'result': 'option_three' }) %}
+            {% else %}
+              {% set response.data = dict(response.data, **{ 'result': 'unknown_action' }) %}
+            {% endif %}
+          {% else %}
+            {% set response.data = dict(response.data, **{ 'result': 'invalid_event_data' }) %}
+          {% endif %}
+        {% else %}
+          {% set response.data = dict(response.data, **{ 'result': 'invalid_trigger' }) %}
+        {% endif %}
         {{ response.data }}
 
   ##############################
