@@ -1455,37 +1455,21 @@ sequence:
         sequence: !input option_three_action # "{{ option_three_actions }}"
 
   ##############################
-  # Clear Notification if response received
+  # Clear Notifications
   ##############################
-  - alias: "Clear notifications on response"
+  - alias: "Clear notifications"
     if:
       - condition: template
         value_template: >
-          {{ clear_on_response and user_response.result not in ['timeout', 'notification_cleared', 'no_response'] }}
+          {{ 
+            (clear_on_response and user_response.result not in ['timeout', 'notification_cleared', 'no_response']) or
+            (expect_response and enable_timeout and clear_on_timeout)
+          }}
     then:
       - repeat:
           for_each: "{{ notify_service }}"
           sequence:
             - service: "{{ repeat.item }}"
-              data:
-                message: "clear_notification"
-                data:
-                  tag: "{{ tag }}"
-
-  ##############################
-  # Clear Notification on timeout
-  ##############################
-  - alias: "Send clear notification commands"
-    repeat:
-      for_each: "{{ notify_service }}"
-      sequence:
-        - if:
-            - alias: "Should send clear notification command?"
-              condition: template
-              value_template: "{{ expect_response and enable_timeout and clear_on_timeout }}"
-          then:
-            - alias: "Send clear notification command to device"
-              service: "{{ repeat.item }}"
               data:
                 message: "clear_notification"
                 data:
