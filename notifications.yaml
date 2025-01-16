@@ -1,6 +1,6 @@
 mode: parallel
 blueprint:
-  name: 🔔 Notifications (Version 2.1.2)
+  name: 🔔 Notifications (Version 2.1.3)
   source_url: https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml
   homeassistant:
     min_version: 2024.06.0
@@ -9,7 +9,7 @@ blueprint:
   description: >-
     <div>
       <h2>🔔 Notifications</h2>
-      <b>Version 2.1.2</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
+      <b>Version 2.1.3</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
       </div>
       <br>
 
@@ -44,6 +44,9 @@ blueprint:
       <details>
       <summary>Expand/collapse changelog</summary>
       
+      ### Version 2.1.3
+      - Fixed: When `notify_device` is empty, automatically include all available mobile devices
+
       ### Version 2.1.2
       - Fixed: Support for multiple zones configuration
 
@@ -1106,7 +1109,23 @@ sequence:
   - alias: Device Configuration
     variables:
       script_notify_device: !input notify_device
-      notify_device: "{{ iif(field_notify_device is defined, field_notify_device, script_notify_device) }}"
+      notify_device: >-
+        {% if (field_notify_device is defined and field_notify_device|length > 0) %}
+          {{ field_notify_device }}
+        {% elif (script_notify_device is defined and script_notify_device|length > 0) %}
+          {{ script_notify_device }}
+        {% else %}
+          {% set devices = namespace(data=[]) %}
+          {% for entity in integration_entities('mobile_app') %}
+            {% if entity.startswith('device_tracker.') %}
+              {% set device_id = device_id(entity) %}
+              {% if device_id %}
+                {% set devices.data = devices.data + [device_id] %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ devices.data }}
+        {% endif %}
       target: !input target
       zones: !input zones
       
