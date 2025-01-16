@@ -997,6 +997,13 @@ fields:
     selector:
       boolean:
 
+  field_clear_on_response:
+    name: "🧹 Clear notifications on response"
+    description: "Override clearing notifications on all devices when any device responds to the notification."
+    example: !input clear_on_response
+    selector:
+      boolean:
+
 sequence:
   ##############################
   # Setup commons Variables
@@ -1068,7 +1075,8 @@ sequence:
       run_timeout_actions: "{{ iif(field_run_timeout_actions is defined, field_run_timeout_actions, script_run_timeout_actions) }}"
       swipe_away_as_timeout: !input swipe_away_as_timeout
       # [Clear on response]
-      clear_on_response: !input clear_on_response
+      script_clear_on_response: !input clear_on_response
+      clear_on_response: "{{ iif(field_clear_on_response is defined, field_clear_on_response, script_clear_on_response) }}"
 
   - alias: Attachments
     variables:
