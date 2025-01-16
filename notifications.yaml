@@ -1,6 +1,6 @@
 mode: parallel
 blueprint:
-  name: 🔔 Notifications (Version 2.1.1)
+  name: 🔔 Notifications (Version 2.1.2)
   source_url: https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml
   homeassistant:
     min_version: 2024.06.0
@@ -9,7 +9,7 @@ blueprint:
   description: >-
     <div>
       <h2>🔔 Notifications</h2>
-      <b>Version 2.1.1</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
+      <b>Version 2.1.2</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
       </div>
       <br>
 
@@ -43,6 +43,9 @@ blueprint:
 
       <details>
       <summary>Expand/collapse changelog</summary>
+      
+      ### Version 2.1.2
+      - Fixed: Support for multiple zones configuration
 
       ### Version 2.1.1
       - Added: Clear Notification if response received
@@ -1111,26 +1114,24 @@ sequence:
     variables:
       filtered_devices: >
         {% set final_devices = namespace(data = []) %}
-        {% if target == 'send_to_all' %}
+        {% if target == 'send_to_all' or not zones %}
           {% set final_devices.data = notify_device %}
-        {% elif target == 'send_to_persons_in_zones' %}
-          {% for device in notify_device %}
-            {% set tracker_id = 'device_tracker.' + device_attr(device,'name')|slugify %}
-            {% set device_state = states(tracker_id)|lower %}
-            {% set zone_name = zones[0].split('.')[1]|lower %}
-            {% if device_state == zone_name %}
-              {% set final_devices.data = final_devices.data + [device] %}
-            {% endif %}
-          {% endfor %}
-        {% elif target == 'send_to_persons_not_in_zones' %}
-          {% for device in notify_device %}
-            {% set tracker_id = 'device_tracker.' + device_attr(device,'name')|slugify %}
-            {% set device_state = states(tracker_id)|lower %}
-            {% set zone_name = zones[0].split('.')[1]|lower %}
-            {% if device_state != zone_name %}
-              {% set final_devices.data = final_devices.data + [device] %}
-            {% endif %}
-          {% endfor %}
+        {% elif target in ['send_to_persons_in_zones', 'send_to_persons_not_in_zones'] %}
+            {% for device in notify_device %}
+              {% set tracker_id = 'device_tracker.' + device_attr(device,'name')|slugify %}
+              {% set device_state = states(tracker_id)|lower %}
+              {% set in_any_zone = false %}
+              {% for zone in zones %}
+                {% set zone_name = zone.split('.')[1]|lower %}
+                {% if device_state == zone_name %}
+                  {% set in_any_zone = true %}
+                  {% break %}
+                {% endif %}
+              {% endfor %}
+              {% if (target == 'send_to_persons_in_zones' and in_any_zone) or (target == 'send_to_persons_not_in_zones' and not in_any_zone) %}
+                {% set final_devices.data = final_devices.data + [device] %}
+              {% endif %}
+            {% endfor %}
         {% endif %}
         {{ final_devices.data }}
 
