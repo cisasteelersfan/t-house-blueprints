@@ -1,4 +1,4 @@
-mode: restart
+mode: parallel
 blueprint:
   name: 🔔 Notifications (Version 2.1.1)
   source_url: https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml
