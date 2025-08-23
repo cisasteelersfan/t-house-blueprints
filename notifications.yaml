@@ -1,6 +1,6 @@
 mode: parallel
 blueprint:
-  name: 🔔 Notifications (Version 2.1.5)
+  name: 🔔 Notifications (Version 2.1.6)
   source_url: https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml
   homeassistant:
     min_version: 2024.06.0
@@ -9,7 +9,7 @@ blueprint:
   description: >-
     <div>
       <h2>🔔 Notifications</h2>
-      <b>Version 2.1.5</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
+      <b>Version 2.1.6</b> | 🔗 <a href="https://github.com/samuelthng/t-house-blueprints/blob/main/notifications.yaml" target="_blank">Github Link</a> | 💬 <a href="https://community.home-assistant.io/t/notifications-actionable-mobile-notifications-script-with-optional-timeout-feature-and-camera-snapshots-works-with-ios-android/551552" target="_blank">Community Post</a>
       </div>
       <br>
 
@@ -45,6 +45,9 @@ blueprint:
 
       <details>
       <summary>Expand/collapse changelog</summary>
+
+      ### Version 2.1.6
+      - Fix: Truncate tag length to 64 bytes to fix iOS notifications
 
       ### Version 2.1.5
       - Added: Fixed Zone-based notifications
@@ -1065,7 +1068,7 @@ sequence:
 
       # [Tag]
       custom_tag: !input tag # No need for manual definition anymore, treat existing definitions as custom tags.
-      tag: "{{ iif(custom_tag|length, custom_tag, this.entity_id ~ '-' ~ context.id) }}"
+      tag: "{{ iif(custom_tag|length, custom_tag, (this.entity_id ~ '-' ~ context.id)) | truncate(64, killwords=True, end='') }}"
 
       # [Grouping]
       group: !input group
